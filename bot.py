@@ -1,6 +1,7 @@
 import discord
 import random
 import os
+import asyncio
 from discord.ext import commands
 from custom_functions import ping_cmd, random_cmd
 
@@ -10,20 +11,22 @@ TOKEN = os.environ.get('BOT_TOKEN')
 @bot.event
 async def on_ready():
     print(f'Bot is Ready')
-    await bot.change_presence(activity=discord.Game('Jadi Admin'))
 
-# async def bot_presence_cycle():
-#     await bot.wait_until_ready()
+bot_statuses = ['Admin','Satpam','Guru']
+async def bot_presence_cycle():
+    await bot.wait_until_ready()
 
-#     while not bot.is_closed():
-#         bot_status = random.choice(bot_statuses)
-#         await bot.change_presence(activity=discord.Game(bot_status))
-#         await asyncio.sleep(120)
+    while not bot.is_closed():
+        bot_status = random.choice(bot_statuses)
+        await bot.change_presence(activity=discord.Game('jadi ' + bot_status))
+        await asyncio.sleep(120)
 
 @bot.command()
 async def ping(ctx):
     response = ping_cmd.ping_info(bot.latency * 1000)
     await ctx.send(response)
+
+# -------------------- Owner's Commands -------------------- #
 
 @commands.has_role('Owner')
 @bot.command()
@@ -55,24 +58,67 @@ async def unban(ctx, *, member):
             await ctx.send(f'User {user.mention} has been unbanned.')
             return 
 
-@bot.command(name='nomor',aliases=['random_number'])
-async def _nomor(ctx, *, numbers):
+@commands.has_role('Owner')
+@bot.command('peraturan')
+async def _peraturan(ctx):
+    peraturan = '''
+
+**Peraturan Discord Server AHA**
+```
+- Pilih role sesuai kelas kalian di #📝⫶pendaftaran
+- Respect everyone.
+- Gunakan channel dengan tepat: 
+    •Kategori 💬Berpesan untuk ngobrol menggunakan teks saja. 
+    Jika ingin ngobrol dengan sesama teman kelas, masuk kelasnya 
+    masing-masing ya
+    •Kategori 🏢Fasilitas untuk fasilitas lainnya didukung oleh 
+    bot di setiap channelnya (out of topic dan random)
+    •Kategori 🔊Bersuara untuk ngobrol dengan suara
+- No NSFW, SARA content
+```
+Udah itu dulu ya. Terima kasih.
+    '''
+    await ctx.send(peraturan)
+
+@commands.has_role('Owner')
+@bot.command('selamat_datang')
+async def _selamat_datang(ctx):
+    pesan = '''
+**Selamat datang di server AHA**
+dimana server ini bukanlah official server dari sekolah kita tercinta.
+```
+- Untuk memulai, pilih kelas (SD/SMP) kalian masing-masing. 
+- Jika kalian dari SD dan juga SMP AHA, kalian bisa pilih kedua 
+kelas (SD/SMP) tersebut.
+- Untuk peraturan dan pengumuman bisa kalian lihat di channel 
+#📢⫶pengumuman.
+```
+Selamat bergabung!:confetti_ball:
+    '''
+    await ctx.send(pesan)
+
+# -------------------- End Owner's commands -------------------- #
+
+# -------------------- Member's commands -------------------- #
+
+@bot.command(name='angka',aliases=['random_number'])
+async def _angka(ctx, *, numbers):
     number = numbers.split(' ')
     if len(number) > 2:
-        await ctx.send(f'Error. Too many parameters. Need 2 parameters')
+        await ctx.send(f'Error. Tidak ada angka. Tulis 2 angka')
     elif len(number) == 2:
         if str.isdigit(number[0]) and str.isdigit(number[1]):
             response = random_cmd.random_int(int(min(number)),int(max(number)))
         else:
-            response = f'Please input numbers only (2 numbers)'
+            response = f'Tulis angka saja (2 angka)'
         await ctx.send(response)
     elif len(number) == 1:
-        await ctx.send(f'Error. Only 1 parameter given. Need 2 parameters')
+        await ctx.send(f'Error. Hanya ada 1 angka. Tulis 2 angka')
 
-@_nomor.error
-async def _nomor_error(ctx,error):
+@_angka.error
+async def _angka_error(ctx,error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send('Please input 2 numbers (e.g. 1 100)')
+        await ctx.send('Tulis 2 angka (contoh: .angka 1 100)')
 
 @bot.command(name='nanya',aliases=['random_ask'])
 async def _nanya(ctx, *, question):
@@ -82,6 +128,13 @@ async def _nanya(ctx, *, question):
 @_nanya.error
 async def _nanya_error(ctx,error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send('Please enter a question')
+        await ctx.send('Tulis apa aja (contoh: .nanya apa kabar)')
 
+@bot.command(name='dadu')
+async def _dadu(ctx):
+    member = ctx.message.author.name
+    await ctx.send(f'🎲 {member} melempar {random.randint(1,6)}')
+
+# -------------------- End Member's commands -------------------- #
+bot.loop.create_task(bot_presence_cycle())
 bot.run(TOKEN)
