@@ -1,10 +1,11 @@
 import discord
 import random
+import os
 from discord.ext import commands
 from custom_functions import ping_cmd, random_cmd
 
 bot = commands.Bot(command_prefix='.')
-TOKEN = 'NzA2MTg1MTEzMDU4NDEwNTE2.Xq5MQw.3Y4xZxbw7L7dkBGbQHRBMH5Dv5U'
+TOKEN = os.environ.get('BOT_TOKEN')
 
 @bot.event
 async def on_ready():
