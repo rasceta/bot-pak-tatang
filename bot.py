@@ -1,11 +1,17 @@
 import discord
 import random
 import os
+import json
 import asyncio
 from discord.ext import commands
 from custom_functions import ping_cmd, random_cmd
 
-bot = commands.Bot(command_prefix='.')
+def get_prefix(client, message):
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    return servers[str(message.guild.id)]['prefix']
+
+bot = commands.Bot(command_prefix=get_prefix)
 TOKEN = os.environ.get('BOT_TOKEN')
 
 @bot.event
@@ -25,6 +31,120 @@ async def bot_presence_cycle():
 async def ping(ctx):
     response = ping_cmd.ping_info(bot.latency * 1000)
     await ctx.send(response)
+
+# -------------------- Add server ids and prefixes to json -------------------- #
+
+@bot.event
+async def on_guild_join(guild):
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    
+    servers[str(guild.id)] = {'server_id' : str(guild.id), 'server_name': str(guild.name),'prefix': '.'}
+
+    with open('servers.json', 'w') as f:
+        json.dump(servers, f, indent=4)
+
+@bot.event
+async def on_guild_remove(guild):
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    
+    servers.pop(str(guild.id))
+
+    with open('servers.json', 'w') as f:
+        json.dump(servers, f, indent=4)
+
+@bot.command()
+async def changeprefix(ctx, prefix):
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    
+    servers[str(ctx.guild.id)]['prefix'] = prefix
+
+    with open('servers.json', 'w') as f:
+        json.dump(servers, f, indent=4)
+
+# -------------------- End Add server ids and prefixes to json -------------------- #
+
+# -------------------- Self role -------------------- #
+
+@bot.event
+async def on_raw_reaction_add(payload):
+    message_id = payload.message_id
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
+    if message_id == int(ROLE_MESSAGE_ID):
+        guild_id = payload.guild_id
+        guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
+        if payload.emoji.name == '🟧': # I had to use this since I used bot message and built-in emoji for choosing role
+            role = discord.utils.get(guild.roles, name='SMP')
+        elif payload.emoji.name == '🟦': # I had to use this since I used bot message and built-in emoji for choosing role
+            role = discord.utils.get(guild.roles, name='SD')
+        else:
+            role = None
+            print(f'Role not found for {payload.emoji.name}')
+
+        if role is not None:
+            member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            if member is not None:
+                await member.add_roles(role)
+                print(f'Done! {member} added to role {role}')
+            else:
+                print('Member not found!')
+        else:
+            print('Role not found!')
+
+@bot.event
+async def on_raw_reaction_remove(payload):
+    message_id = payload.message_id
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
+    if message_id == int(ROLE_MESSAGE_ID):
+        guild_id = payload.guild_id
+        guild = discord.utils.find(lambda g : g.id == guild_id, bot.guilds)
+
+        if payload.emoji.name == '🟧': # I had to use this since I used bot message and built-in emoji for choosing role
+            role = discord.utils.get(guild.roles, name='SMP')
+        elif payload.emoji.name == '🟦': # I had to use this since I used bot message and built-in emoji for choosing role
+            role = discord.utils.get(guild.roles, name='SD')
+        else:
+            role = None
+            print(f'Role not found for {payload.emoji.name}')
+
+        if role is not None:
+            member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            if member is not None:
+                await member.remove_roles(role)
+                print(f'Done! {member} removed from role {role}')
+            else:
+                print('Member not found!')
+        else:
+            print('Role not found!')
+
+@commands.has_role('Owner')
+@bot.command('choose_role')
+async def _choose_role(ctx):
+    with open('servers.json', 'r') as f:
+        servers = json.load(f)
+    msg = '''
+Role Menu: Kelas
+Silakan react berdasarkan kelas kalian untuk mendapatkan role.
+
+:orange_square: = SMP
+
+:blue_square: = SD
+
+'''
+    message = await ctx.send(msg)
+    message_id = message.id
+    servers[str(ctx.guild.id)]['role_message_id'] = str(message_id)
+
+    with open('servers.json', 'w') as f:
+        json.dump(servers, f, indent=4)
+
+# -------------------- End self role -------------------- #
 
 # -------------------- Owner's Commands -------------------- #
 
