@@ -218,6 +218,16 @@ Selamat bergabung!:confetti_ball:
     '''
     await ctx.send(pesan)
 
+@commands.has_role('Owner')
+@bot.command('perbaikan')
+async def _perbaikan(ctx):
+    pesan = '''
+**:warning:Channel sedang dalam perbaikan:warning:**
+```Mohon bersabar dan coba lagi nanti ya!```
+'''
+    await ctx.send(pesan)
+    await ctx.send(embed=discord.Embed().set_image(url='https://i.imgflip.com/3oct0x.png'))
+
 # -------------------- End Owner's commands -------------------- #
 
 # -------------------- Member's commands -------------------- #
