@@ -129,10 +129,10 @@ async def _choose_role(ctx):
     with open('servers.json', 'r') as f:
         servers = json.load(f)
     msg = '''
-Role Menu: Kelas
+**Pilih Role: Kelas**
 Silakan react berdasarkan kelas kalian untuk mendapatkan role.
 
-:orange_square: = SMP
+>>> :orange_square: = SMP
 
 :blue_square: = SD
 
@@ -214,6 +214,7 @@ kelas (SD/SMP) tersebut.
 #📢⫶pengumuman.
 ```
 Selamat bergabung!:confetti_ball:
+
     '''
     await ctx.send(pesan)
 
