@@ -4,12 +4,21 @@ import os
 import json
 import asyncio
 from discord.ext import commands
-from custom_functions import ping_cmd, random_cmd
+from custom_functions import ping_cmd, random_cmd, string_cmd
 
 def get_prefix(client, message):
     with open('servers.json', 'r') as f:
         servers = json.load(f)
     return servers[str(message.guild.id)]['prefix']
+
+def open_json(filename):
+    with open(filename, 'r') as f:
+        servers = json.load(f)
+    return servers
+
+def write_json(filename, var_json):
+    with open(filename, 'w') as f:
+        json.dump(var_json, f, indent=4)
 
 bot = commands.Bot(command_prefix=get_prefix)
 TOKEN = os.environ.get('BOT_TOKEN')
@@ -36,33 +45,21 @@ async def ping(ctx):
 
 @bot.event
 async def on_guild_join(guild):
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
-    
+    servers = open_json('servers.json')
     servers[str(guild.id)] = {'server_id' : str(guild.id), 'server_name': str(guild.name),'prefix': '.'}
-
-    with open('servers.json', 'w') as f:
-        json.dump(servers, f, indent=4)
+    write_json('servers.json',servers)
 
 @bot.event
 async def on_guild_remove(guild):
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
-    
+    servers = open_json('servers.json')
     servers.pop(str(guild.id))
-
-    with open('servers.json', 'w') as f:
-        json.dump(servers, f, indent=4)
+    write_json('servers.json',servers)
 
 @bot.command()
 async def changeprefix(ctx, prefix):
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
-    
+    servers = open_json('servers.json')
     servers[str(ctx.guild.id)]['prefix'] = prefix
-
-    with open('servers.json', 'w') as f:
-        json.dump(servers, f, indent=4)
+    write_json('servers.json',servers)
 
 # -------------------- End Add server ids and prefixes to json -------------------- #
 
@@ -71,8 +68,7 @@ async def changeprefix(ctx, prefix):
 @bot.event
 async def on_raw_reaction_add(payload):
     message_id = payload.message_id
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
+    servers = open_json('servers.json')
     ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
     if message_id == int(ROLE_MESSAGE_ID):
         guild_id = payload.guild_id
@@ -98,8 +94,7 @@ async def on_raw_reaction_add(payload):
 @bot.event
 async def on_raw_reaction_remove(payload):
     message_id = payload.message_id
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
+    servers = open_json('servers.json')
     ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
     if message_id == int(ROLE_MESSAGE_ID):
         guild_id = payload.guild_id
@@ -126,23 +121,15 @@ async def on_raw_reaction_remove(payload):
 @commands.has_role('Owner')
 @bot.command('choose_role')
 async def _choose_role(ctx):
-    with open('servers.json', 'r') as f:
-        servers = json.load(f)
-    msg = '''
-**Pilih Role: Kelas**
-Silakan react berdasarkan kelas kalian untuk mendapatkan role.
-
->>> :orange_square: = SMP
-
-:blue_square: = SD
-
-'''
+    servers = open_json('servers.json')
+    msg = string_cmd.get_response('choose_role')
     message = await ctx.send(msg)
     message_id = message.id
     servers[str(ctx.guild.id)]['role_message_id'] = str(message_id)
+    await message.add_reaction('🟦')
+    await message.add_reaction('🟧')
 
-    with open('servers.json', 'w') as f:
-        json.dump(servers, f, indent=4)
+    write_json('servers.json',servers)
 
 # -------------------- End self role -------------------- #
 
@@ -179,53 +166,16 @@ async def unban(ctx, *, member):
             return 
 
 @commands.has_role('Owner')
-@bot.command('peraturan')
-async def _peraturan(ctx):
-    peraturan = '''
-
-**Peraturan Discord Server AHA**
-```
-- Pilih role sesuai kelas kalian di #📝⫶pendaftaran
-- Respect everyone.
-- Gunakan channel dengan tepat: 
-    •Kategori 💬Berpesan untuk ngobrol menggunakan teks saja. 
-    Jika ingin ngobrol dengan sesama teman kelas, masuk kelasnya 
-    masing-masing ya
-    •Kategori 🏢Fasilitas untuk fasilitas lainnya didukung oleh 
-    bot di setiap channelnya (out of topic dan random)
-    •Kategori 🔊Bersuara untuk ngobrol dengan suara
-- No NSFW, SARA content
-```
-Udah itu dulu ya. Terima kasih.
-    '''
-    await ctx.send(peraturan)
-
-@commands.has_role('Owner')
-@bot.command('selamat_datang')
-async def _selamat_datang(ctx):
-    pesan = '''
-**Selamat datang di server AHA**
-dimana server ini bukanlah official server dari sekolah kita tercinta.
-```
-- Untuk memulai, pilih kelas (SD/SMP) kalian masing-masing. 
-- Jika kalian dari SD dan juga SMP AHA, kalian bisa pilih kedua 
-kelas (SD/SMP) tersebut.
-- Untuk peraturan dan pengumuman bisa kalian lihat di channel 
-#📢⫶pengumuman.
-```
-Selamat bergabung!:confetti_ball:
-
-    '''
-    await ctx.send(pesan)
+@bot.command('pesan')
+async def _pesan(ctx, pesan):
+    response = string_cmd.get_response(pesan)
+    await ctx.send(response)
 
 @commands.has_role('Owner')
 @bot.command('perbaikan')
 async def _perbaikan(ctx):
-    pesan = '''
-**:warning:Channel sedang dalam perbaikan:warning:**
-```Mohon bersabar dan coba lagi nanti ya!```
-'''
-    await ctx.send(pesan)
+    perbaikan = string_cmd.get_response('perbaikan')
+    await ctx.send(perbaikan)
     await ctx.send(embed=discord.Embed().set_image(url='https://i.imgflip.com/3oct0x.png'))
 
 # -------------------- End Owner's commands -------------------- #
