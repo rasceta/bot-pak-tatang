@@ -55,6 +55,7 @@ async def on_guild_remove(guild):
     servers.pop(str(guild.id))
     write_json('servers.json',servers)
 
+@commands.has_role('Owner')
 @bot.command()
 async def changeprefix(ctx, prefix):
     servers = open_json('servers.json')
