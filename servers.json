@@ -4,5 +4,11 @@
         "server_name": "AHA",
         "prefix": ".",
         "role_message_id": "707537464553766912"
+    },
+    "707487569792991243": {
+        "server_id": "707487569792991243",
+        "server_name": "Pentagon[e]",
+        "prefix": ".",
+        "testing_channel_id": "707647398012387469"
     }
 }

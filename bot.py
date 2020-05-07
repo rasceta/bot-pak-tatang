@@ -4,21 +4,14 @@ import os
 import json
 import asyncio
 from discord.ext import commands
+
+import rw_json
 from custom_functions import ping_cmd, random_cmd, string_cmd
 
 def get_prefix(client, message):
     with open('servers.json', 'r') as f:
         servers = json.load(f)
     return servers[str(message.guild.id)]['prefix']
-
-def open_json(filename):
-    with open(filename, 'r') as f:
-        servers = json.load(f)
-    return servers
-
-def write_json(filename, var_json):
-    with open(filename, 'w') as f:
-        json.dump(var_json, f, indent=4)
 
 bot = commands.Bot(command_prefix=get_prefix)
 TOKEN = os.environ.get('BOT_TOKEN')
@@ -41,35 +34,35 @@ async def ping(ctx):
     response = ping_cmd.ping_info(bot.latency * 1000)
     await ctx.send(response)
 
-# -------------------- Add server ids and prefixes to json -------------------- #
+# ---------- Add server ids and prefixes to json ---------- #
 
 @bot.event
 async def on_guild_join(guild):
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     servers[str(guild.id)] = {'server_id' : str(guild.id), 'server_name': str(guild.name),'prefix': '.'}
-    write_json('servers.json',servers)
+    rw_json.write_json('servers.json',servers)
 
 @bot.event
 async def on_guild_remove(guild):
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     servers.pop(str(guild.id))
-    write_json('servers.json',servers)
+    rw_json.write_json('servers.json',servers)
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command()
 async def changeprefix(ctx, prefix):
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     servers[str(ctx.guild.id)]['prefix'] = prefix
-    write_json('servers.json',servers)
+    rw_json.write_json('servers.json',servers)
 
-# -------------------- End Add server ids and prefixes to json -------------------- #
+# ---------- End Add server ids and prefixes to json ---------- #
 
 # -------------------- Self role -------------------- #
 
 @bot.event
 async def on_raw_reaction_add(payload):
     message_id = payload.message_id
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
     if message_id == int(ROLE_MESSAGE_ID):
         guild_id = payload.guild_id
@@ -95,7 +88,7 @@ async def on_raw_reaction_add(payload):
 @bot.event
 async def on_raw_reaction_remove(payload):
     message_id = payload.message_id
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     ROLE_MESSAGE_ID = servers[str(payload.guild_id)]['role_message_id']
     if message_id == int(ROLE_MESSAGE_ID):
         guild_id = payload.guild_id
@@ -119,10 +112,10 @@ async def on_raw_reaction_remove(payload):
         else:
             print('Role not found!')
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command('choose_role')
 async def _choose_role(ctx):
-    servers = open_json('servers.json')
+    servers = rw_json.open_json('servers.json')
     msg = string_cmd.get_response('choose_role')
     message = await ctx.send(msg)
     message_id = message.id
@@ -130,30 +123,30 @@ async def _choose_role(ctx):
     await message.add_reaction('🟦')
     await message.add_reaction('🟧')
 
-    write_json('servers.json',servers)
+    rw_json.write_json('servers.json',servers)
 
 # -------------------- End self role -------------------- #
 
 # -------------------- Owner's Commands -------------------- #
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command()
 async def clear(ctx, limits=5):
     await ctx.channel.purge(limit=limits)
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command()
 async def kick(ctx, member : discord.Member, *, reason=None):
     await member.kick(reason=reason)
     await ctx.send(f'{member} has been kicked because : {reason}')
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command()
 async def ban(ctx, member : discord.Member, *, reason=None):
     await member.ban(reason=reason)
     await ctx.send(f'{member} has been banned because : {reason}')
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 async def unban(ctx, *, member):
     banned_users = await ctx.guild.bans()
     member_name, member_discriminator = member.split('#')
@@ -164,22 +157,74 @@ async def unban(ctx, *, member):
         if (user.name, user.discriminator) == (member_name, member_discriminator):
             await ctx.guild.unban(user)
             await ctx.send(f'User {user.mention} has been unbanned.')
-            return 
+            return
 
-@commands.has_role('Owner')
+# ----- Set, Get, and Delete custom alias for a channel ------ #
+
+@commands.has_permissions(administrator=True)
+@bot.command('set_channel')
+async def _set_channel(ctx, purpose):
+    servers = rw_json.open_json('servers.json')
+    servers[str(ctx.guild.id)][purpose+'_channel_id'] = str(ctx.channel.id)
+    rw_json.write_json('servers.json',servers)
+    await ctx.send(f'`You have set this channel as {purpose} channel`')
+
+@commands.has_permissions(administrator=True)
+@bot.command('delete_channel')
+async def _delete_channel(ctx, purpose):
+    servers = rw_json.open_json('servers.json')
+    if purpose+'_channel_id' in servers[str(ctx.guild.id)]:
+        del servers[str(ctx.guild.id)][purpose+'_channel_id']
+        rw_json.write_json('servers.json',servers)
+        await ctx.send(f'`You are no longer have {purpose} channel now`')
+    else:
+        await ctx.send(f"`You haven't set a channel as {purpose} channel`")
+
+@commands.has_permissions(administrator=True)
+@bot.command('get_channel')
+async def _get_channel(ctx, purpose):
+    servers = rw_json.open_json('servers.json')
+    this_server = servers[str(ctx.guild.id)]
+    if purpose+'_channel_id' in this_server:
+        channel = bot.get_channel(int(this_server[purpose+'_channel_id']))
+        await ctx.send(f'{channel.mention} is your {purpose} channel')
+    else:
+        await ctx.send(f"`You haven't set a channel as {purpose} channel`")
+
+@commands.has_permissions(administrator=True)
+@bot.command('send_channel')
+async def _send_channel(ctx, *, message):
+    servers = rw_json.open_json('servers.json')
+    purpose = message.split(' ')
+    try: 
+        channel_id = servers[str(ctx.guild.id)][str(purpose[0])+'_channel_id']
+        if channel_id != '' or channel_id is not None:
+            channel = bot.get_channel(int(channel_id))
+            response = purpose[1:].copy()
+            await channel.send(' '.join(map(str, response)))
+        else:
+            response = f"`You haven't set a channel as {purpose[0]} channel. Please enter a channel and type .set_channel {purpose[0]}`"
+            await ctx.send(response)
+    except:
+        response = f"`Key not found in json for {purpose[0]+'_channel_id'}`"
+        await ctx.send(response)
+    
+# ------------- End custom alias for a channel -------------- #
+
+@commands.has_permissions(administrator=True)
 @bot.command('pesan')
 async def _pesan(ctx, pesan):
     response = string_cmd.get_response(pesan)
     await ctx.send(response)
 
-@commands.has_role('Owner')
+@commands.has_permissions(administrator=True)
 @bot.command('perbaikan')
 async def _perbaikan(ctx):
     perbaikan = string_cmd.get_response('perbaikan')
     await ctx.send(perbaikan)
     await ctx.send(embed=discord.Embed().set_image(url='https://i.imgflip.com/3oct0x.png'))
 
-# -------------------- End Owner's commands -------------------- #
+# ------------------- End Owner's commands ------------------- #
 
 # -------------------- Member's commands -------------------- #
 
