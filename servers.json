@@ -3,12 +3,23 @@
         "server_id": "706136929657421834",
         "server_name": "AHA",
         "prefix": ".",
-        "role_message_id": "707537464553766912"
+        "role_message_id": "707537464553766912",
+        "channels_aliases": {}
+    },
+    "436700508728721408": {
+        "server_id": "436700508728721408",
+        "server_name": "YQZers",
+        "prefix": ".",
+        "channels_aliases": {
+            "testing": "440270624829472795"
+        }
     },
     "707487569792991243": {
         "server_id": "707487569792991243",
         "server_name": "Pentagon[e]",
         "prefix": ".",
-        "testing_channel_id": "707647398012387469"
+        "channels_aliases": {
+            "log": "707824375143071765"
+        }
     }
 }

@@ -3,6 +3,9 @@ import random
 import os
 import json
 import asyncio
+import pytz
+from pytz import timezone
+from datetime import datetime, timedelta
 from discord.ext import commands
 
 import rw_json
@@ -39,7 +42,7 @@ async def ping(ctx):
 @bot.event
 async def on_guild_join(guild):
     servers = rw_json.open_json('servers.json')
-    servers[str(guild.id)] = {'server_id' : str(guild.id), 'server_name': str(guild.name),'prefix': '.'}
+    servers[str(guild.id)] = {'server_id' : str(guild.id), 'server_name': str(guild.name),'prefix': '.', 'channels_aliases':dict()}
     rw_json.write_json('servers.json',servers)
 
 @bot.event
@@ -162,10 +165,17 @@ async def unban(ctx, *, member):
 # ----- Set, Get, and Delete custom alias for a channel ------ #
 
 @commands.has_permissions(administrator=True)
+@bot.command('channels_aliases')
+async def _set_channel(ctx):
+    servers = rw_json.open_json('servers.json')
+    channel_aliases = list(servers[str(ctx.guild.id)]['channels_aliases'].keys())
+    await ctx.send(f'`Your custom channels aliases are : {channel_aliases}. You can find them by typing .get_channel channel_alias`')
+
+@commands.has_permissions(administrator=True)
 @bot.command('set_channel')
 async def _set_channel(ctx, purpose):
     servers = rw_json.open_json('servers.json')
-    servers[str(ctx.guild.id)][purpose+'_channel_id'] = str(ctx.channel.id)
+    servers[str(ctx.guild.id)]['channels_aliases'][purpose] = str(ctx.channel.id)
     rw_json.write_json('servers.json',servers)
     await ctx.send(f'`You have set this channel as {purpose} channel`')
 
@@ -173,8 +183,8 @@ async def _set_channel(ctx, purpose):
 @bot.command('delete_channel')
 async def _delete_channel(ctx, purpose):
     servers = rw_json.open_json('servers.json')
-    if purpose+'_channel_id' in servers[str(ctx.guild.id)]:
-        del servers[str(ctx.guild.id)][purpose+'_channel_id']
+    if purpose in servers[str(ctx.guild.id)]['channels_aliases'].keys():
+        del servers[str(ctx.guild.id)]['channels_aliases'][purpose]
         rw_json.write_json('servers.json',servers)
         await ctx.send(f'`You are no longer have {purpose} channel now`')
     else:
@@ -185,8 +195,8 @@ async def _delete_channel(ctx, purpose):
 async def _get_channel(ctx, purpose):
     servers = rw_json.open_json('servers.json')
     this_server = servers[str(ctx.guild.id)]
-    if purpose+'_channel_id' in this_server:
-        channel = bot.get_channel(int(this_server[purpose+'_channel_id']))
+    if purpose in this_server['channels_aliases']:
+        channel = bot.get_channel(int(this_server['channels_aliases'][purpose]))
         await ctx.send(f'{channel.mention} is your {purpose} channel')
     else:
         await ctx.send(f"`You haven't set a channel as {purpose} channel`")
@@ -197,16 +207,16 @@ async def _send_channel(ctx, *, message):
     servers = rw_json.open_json('servers.json')
     purpose = message.split(' ')
     try: 
-        channel_id = servers[str(ctx.guild.id)][str(purpose[0])+'_channel_id']
+        channel_id = servers[str(ctx.guild.id)]['channels_aliases'][purpose[0]]
         if channel_id != '' or channel_id is not None:
             channel = bot.get_channel(int(channel_id))
             response = purpose[1:].copy()
             await channel.send(' '.join(map(str, response)))
         else:
-            response = f"`You haven't set a channel as {purpose[0]} channel. Please enter a channel and type .set_channel {purpose[0]}`"
+            response = f"`Key not found in json for {purpose[0]} channel`"
             await ctx.send(response)
     except:
-        response = f"`Key not found in json for {purpose[0]+'_channel_id'}`"
+        response = f"`You haven't set a channel as {purpose[0]} channel. Please enter a channel and type .set_channel {purpose[0]}`"
         await ctx.send(response)
     
 # ------------- End custom alias for a channel -------------- #
@@ -227,6 +237,22 @@ async def _perbaikan(ctx):
 # ------------------- End Owner's commands ------------------- #
 
 # -------------------- Member's commands -------------------- #
+
+@bot.command('time')
+async def _time(ctx, country):
+    base_zone = timezone('Asia/Jakarta')
+    city = None
+    for x in pytz.all_timezones:
+        if str.lower(country) in str.lower(x):
+            city = x
+    if city is not None:
+        your_zone = timezone(city)
+        fmt = '%Y-%m-%d %H:%M:%S %Z%z'
+        base_dt = base_zone.localize(datetime.now())
+        your_dt = base_dt.astimezone(your_zone)   
+        await ctx.send(f'Current time in {city} : {str(your_dt.strftime(fmt))}')
+    else:
+        await ctx.send('Your city is not registered in current list')
 
 @bot.command(name='angka',aliases=['random_number'])
 async def _angka(ctx, *, numbers):
@@ -258,9 +284,13 @@ async def _nanya_error(ctx,error):
         await ctx.send('Tulis apa aja (contoh: .nanya apa kabar)')
 
 @bot.command(name='dadu')
-async def _dadu(ctx):
-    member = ctx.message.author.name
-    await ctx.send(f'🎲 {member} melempar {random.randint(1,6)}')
+async def _dadu(ctx, member : discord.User):
+    await ctx.send(f'🎲 {ctx.message.author.mention} melempar {member.mention} {random.randint(1,6)}')
+
+@_dadu.error
+async def _dadu_error(ctx,error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f'🎲 {ctx.message.author.mention} melempar {random.randint(1,6)}')
 
 # -------------------- End Member's commands -------------------- #
 bot.loop.create_task(bot_presence_cycle())
