@@ -240,7 +240,7 @@ async def _perbaikan(ctx):
 
 @bot.command('time')
 async def _time(ctx, country):
-    base_zone = timezone('Asia/Jakarta')
+    base_zone = timezone('UTC')
     city = None
     for x in pytz.all_timezones:
         if str.lower(country) in str.lower(x):
