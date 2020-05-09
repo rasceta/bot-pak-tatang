@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from discord.ext import commands
 
 import rw_json
-from custom_functions import ping_cmd, random_cmd, string_cmd
+from custom_commands import ping_cmd, random_cmd, string_cmd, time_cmd
 
 def get_prefix(client, message):
     with open('servers.json', 'r') as f:
@@ -173,58 +173,56 @@ async def _set_channel(ctx):
 
 @commands.has_permissions(administrator=True)
 @bot.command('set_channel')
-async def _set_channel(ctx, purpose):
+async def _set_channel(ctx, alias):
     servers = rw_json.open_json('servers.json')
-    servers[str(ctx.guild.id)]['channels_aliases'][purpose] = str(ctx.channel.id)
+    servers[str(ctx.guild.id)]['channels_aliases'][alias] = str(ctx.channel.id)
     rw_json.write_json('servers.json',servers)
-    await ctx.send(f'`You have set this channel as {purpose} channel`')
+    await ctx.send(f'`You have set this channel as {alias} channel`')
 
 @commands.has_permissions(administrator=True)
 @bot.command('delete_channel')
-async def _delete_channel(ctx, purpose):
+async def _delete_channel(ctx, alias):
     servers = rw_json.open_json('servers.json')
-    if purpose in servers[str(ctx.guild.id)]['channels_aliases'].keys():
-        del servers[str(ctx.guild.id)]['channels_aliases'][purpose]
+    if alias in servers[str(ctx.guild.id)]['channels_aliases'].keys():
+        del servers[str(ctx.guild.id)]['channels_aliases'][alias]
         rw_json.write_json('servers.json',servers)
-        await ctx.send(f'`You are no longer have {purpose} channel now`')
+        await ctx.send(f'`You are no longer have {alias} channel now`')
     else:
-        await ctx.send(f"`You haven't set a channel as {purpose} channel`")
+        await ctx.send(f"`You haven't set a channel as {alias} channel`")
 
 @commands.has_permissions(administrator=True)
 @bot.command('get_channel')
-async def _get_channel(ctx, purpose):
+async def _get_channel(ctx, alias):
     servers = rw_json.open_json('servers.json')
     this_server = servers[str(ctx.guild.id)]
-    if purpose in this_server['channels_aliases']:
-        channel = bot.get_channel(int(this_server['channels_aliases'][purpose]))
-        await ctx.send(f'{channel.mention} is your {purpose} channel')
+    if alias in this_server['channels_aliases']:
+        channel = bot.get_channel(int(this_server['channels_aliases'][alias]))
+        await ctx.send(f'{channel.mention} is your {alias} channel')
     else:
-        await ctx.send(f"`You haven't set a channel as {purpose} channel`")
+        await ctx.send(f"`You haven't set a channel as {alias} channel`")
 
 @commands.has_permissions(administrator=True)
 @bot.command('send_channel')
-async def _send_channel(ctx, *, message):
+async def _send_channel(ctx, alias, *, message):
     servers = rw_json.open_json('servers.json')
-    purpose = message.split(' ')
     try: 
-        channel_id = servers[str(ctx.guild.id)]['channels_aliases'][purpose[0]]
+        channel_id = servers[str(ctx.guild.id)]['channels_aliases'][alias]
         if channel_id != '' or channel_id is not None:
             channel = bot.get_channel(int(channel_id))
-            response = purpose[1:].copy()
-            await channel.send(' '.join(map(str, response)))
+            await channel.send(message)
         else:
-            response = f"`Key not found in json for {purpose[0]} channel`"
+            response = f"`Key not found in json for {alias} channel`"
             await ctx.send(response)
     except:
-        response = f"`You haven't set a channel as {purpose[0]} channel. Please enter a channel and type .set_channel {purpose[0]}`"
+        response = f"`You haven't set a channel as {alias} channel. Please enter a channel and type .set_channel {alias}`"
         await ctx.send(response)
     
 # ------------- End custom alias for a channel -------------- #
 
 @commands.has_permissions(administrator=True)
 @bot.command('pesan')
-async def _pesan(ctx, pesan):
-    response = string_cmd.get_response(pesan)
+async def _pesan(ctx, nama_pesan):
+    response = string_cmd.get_response(nama_pesan)
     await ctx.send(response)
 
 @commands.has_permissions(administrator=True)
@@ -239,39 +237,28 @@ async def _perbaikan(ctx):
 # -------------------- Member's commands -------------------- #
 
 @bot.command('time')
-async def _time(ctx, country):
-    base_zone = timezone('UTC')
-    city = None
-    for x in pytz.all_timezones:
-        if str.lower(country) in str.lower(x):
-            city = x
-    if city is not None:
-        your_zone = timezone(city)
-        fmt = '%Y-%m-%d %H:%M:%S %Z%z'
-        base_dt = base_zone.localize(datetime.now())
-        your_dt = base_dt.astimezone(your_zone)   
-        await ctx.send(f'Current time in {city} : {str(your_dt.strftime(fmt))}')
-    else:
-        await ctx.send('Your city is not registered in current list')
+async def _time(ctx, city):
+    response = time_cmd.get_time_by_city(city)
+    await ctx.send(response)
 
 @bot.command(name='angka',aliases=['random_number'])
 async def _angka(ctx, *, numbers):
     number = numbers.split(' ')
     if len(number) > 2:
-        await ctx.send(f'Error. Tidak ada angka. Tulis 2 angka')
+        await ctx.send(f'`Error. Tidak ada angka. Tulis 2 angka`')
     elif len(number) == 2:
         if str.isdigit(number[0]) and str.isdigit(number[1]):
             response = random_cmd.random_int(int(min(number)),int(max(number)))
         else:
-            response = f'Tulis angka saja (2 angka)'
+            response = f'`Tulis angka saja (2 angka)`'
         await ctx.send(response)
     elif len(number) == 1:
-        await ctx.send(f'Error. Hanya ada 1 angka. Tulis 2 angka')
+        await ctx.send(f'`Error. Hanya ada 1 angka. Tulis 2 angka`')
 
 @_angka.error
 async def _angka_error(ctx,error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send('Tulis 2 angka (contoh: .angka 1 100)')
+        await ctx.send('`Tulis 2 angka (contoh: .angka 1 100)`')
 
 @bot.command(name='nanya',aliases=['random_ask'])
 async def _nanya(ctx, *, question):
@@ -281,7 +268,7 @@ async def _nanya(ctx, *, question):
 @_nanya.error
 async def _nanya_error(ctx,error):
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send('Tulis apa aja (contoh: .nanya apa kabar)')
+        await ctx.send('`Tulis apa aja (contoh: .nanya apa kabar)`')
 
 @bot.command(name='dadu')
 async def _dadu(ctx, member : discord.User):

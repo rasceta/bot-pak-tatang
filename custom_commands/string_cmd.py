@@ -14,7 +14,7 @@ def get_response(response):
     elif response == 'kelas_smp':
         return kelas_smp
     else:
-        return 'Respon tidak ditemukan'
+        return '`Nama pesan tidak ditemukan. Cobalah salah satu di antara ini: peraturan, selamat_datang, perbaikan, choose_role, lobby, kelas_sd, kelas_smp`'
 
 peraturan = '''
 **Peraturan Discord Server AHA**
